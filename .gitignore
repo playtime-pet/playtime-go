@@ -1,0 +1,69 @@
+# Binary files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output directories
+bin/
+_output/
+dist/
+
+# Go specific
+*.o
+*.a
+*.so
+
+# Dependency directories
+vendor/
+
+# Environment variables
+.env
+.env.local
+
+# Go workspace file
+go.work
+
+# Log files
+*.log
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux specific
+*~
+.directory
+.Trash-*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Debug files
+debug
+__debug_bin
+
+# Go coverage results
+coverage.txt
+coverage.html
+profile.out
+
+# Built application
+main
+playtime-go
