@@ -30,9 +30,13 @@ func GetPhoneNumber(code string) (models.PhoneResponse, error) {
 	
 	// Make POST request
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return models.PhoneResponse{}, fmt.Errorf("failed to send request: %v", err)
+	if resp.StatusCode != http.StatusOK {
+		return models.PhoneResponse{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
+	if err != nil {
+		return models.PhoneResponse{}, fmt.Errorf("failed to send request to %s with body %s: %v", url, string(jsonBody), err)
+	}
+	
 	defer resp.Body.Close()
 	
 	// Parse response
