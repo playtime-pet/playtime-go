@@ -1,15 +1,15 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"playtime-go/services"
+	"playtime-go/utils"
 )
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.ErrorResponse(w, "Method not allowed", 400, http.StatusBadRequest)
 		return
 	}
 
@@ -17,17 +17,16 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	code := query.Get("code")
 
 	if code == "" {
-		http.Error(w, "Code is required", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Code is required", 401, http.StatusBadRequest)
 		return
 	}
 
 	session, err := services.GetLoginSession(code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(session)
-
+	// Return response
+	utils.SuccessResponse(w, session, http.StatusOK)
 }

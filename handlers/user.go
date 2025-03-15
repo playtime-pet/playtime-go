@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"playtime-go/models"
 	"playtime-go/services"
+	"playtime-go/utils"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,7 +21,7 @@ func HandleUser(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		getUser(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.ErrorResponse(w, "Method not allowed", 400, http.StatusBadRequest)
 	}
 }
 
@@ -28,7 +29,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	// Read request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Failed to read request body", 400, http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
@@ -36,27 +37,25 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	// Parse request body
 	var request models.UserRequest
 	if err := json.Unmarshal(body, &request); err != nil {
-		http.Error(w, "Invalid request format", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Invalid request format", 400, http.StatusBadRequest)
 		return
 	}
 
 	// Validate request
 	if request.PhoneNumber == "" {
-		http.Error(w, "Phone number is required", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Phone number is required", 400, http.StatusBadRequest)
 		return
 	}
 
 	// Call service to create user
 	user, err := services.CreateUser(request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		return
 	}
 
 	// Return response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	utils.SuccessResponse(w, user, http.StatusCreated)
 }
 
 // getUser handles GET requests to retrieve user information
@@ -76,51 +75,53 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 		// Convert string ID to ObjectID
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
-			http.Error(w, "Invalid user ID format", http.StatusBadRequest)
+			utils.ErrorResponse(w, "Invalid user ID format", 400, http.StatusBadRequest)
 			return
 		}
 		user, err = services.GetUserByID(objectID)
+		// if err != nil {
+		// 	utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
+		// 	return
+		// }
 	} else if phone != "" {
 		user, err = services.GetUserByPhone(phone)
 	} else {
 		// If neither ID nor phone is provided, return all users
 		users, listErr := services.ListUsers()
 		if listErr != nil {
-			http.Error(w, listErr.Error(), http.StatusInternalServerError)
+			utils.ErrorResponse(w, listErr.Error(), 500, http.StatusInternalServerError)
 			return
 		}
 		// Return response
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(users)
+		utils.SuccessResponse(w, users, http.StatusOK)
 		return
 	}
 
 	// Handle errors
 	if err != nil {
 		if strings.Contains(err.Error(), "no documents") || strings.Contains(err.Error(), "no user found") {
-			http.Error(w, "User not found", http.StatusNotFound)
+			utils.ErrorResponse(w, "User not found", 404, http.StatusNotFound)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		}
 		return
 	}
 
 	// Return response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	utils.SuccessResponse(w, user, http.StatusOK)
 }
 
 // HandleUserByOpenID handles requests to get a user by OpenID
 func HandleUserByOpenID(w http.ResponseWriter, r *http.Request) {
 	// Only accept GET requests
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.ErrorResponse(w, "Method not allowed", 405, http.StatusMethodNotAllowed)
 		return
 	}
 
 	openID := strings.TrimPrefix(r.URL.Path, "/user/openid/")
 	if openID == "" {
-		http.Error(w, "OpenID is required", http.StatusBadRequest)
+		utils.ErrorResponse(w, "OpenID is required", 400, http.StatusBadRequest)
 		return
 	}
 
@@ -128,14 +129,13 @@ func HandleUserByOpenID(w http.ResponseWriter, r *http.Request) {
 	user, err := services.GetUserByOpenID(openID)
 	if err != nil {
 		if strings.Contains(err.Error(), "no user found") {
-			http.Error(w, "User not found", http.StatusNotFound)
+			utils.ErrorResponse(w, "User not found", 404, http.StatusNotFound)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		}
 		return
 	}
 
 	// Return response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	utils.SuccessResponse(w, user, http.StatusOK)
 }

@@ -6,20 +6,21 @@ import (
 	"net/http"
 	"playtime-go/models"
 	"playtime-go/services"
+	"playtime-go/utils"
 )
 
 // HandlePhone handles requests to get user's phone number
 func HandlePhone(w http.ResponseWriter, r *http.Request) {
 	// Only accept POST requests
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.ErrorResponse(w, "Method not allowed", 405, http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Read request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Failed to read request body", 400, http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
@@ -27,24 +28,23 @@ func HandlePhone(w http.ResponseWriter, r *http.Request) {
 	// Parse request body
 	var request models.PhoneRequest
 	if err := json.Unmarshal(body, &request); err != nil {
-		http.Error(w, "Invalid request format", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Invalid request format", 400, http.StatusBadRequest)
 		return
 	}
 
 	// Validate request
 	if request.Code == "" {
-		http.Error(w, "Code is required", http.StatusBadRequest)
+		utils.ErrorResponse(w, "Code is required", 400, http.StatusBadRequest)
 		return
 	}
 
 	// Call service to get phone number
 	phoneResponse, err := services.GetPhoneNumber(request.Code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		return
 	}
 
 	// Return response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(phoneResponse)
+	utils.SuccessResponse(w, phoneResponse, http.StatusOK)
 }

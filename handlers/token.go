@@ -1,23 +1,22 @@
 package handlers
 
 import (
-    "encoding/json"
-    "net/http"
-    "playtime-go/services"
+	"net/http"
+	"playtime-go/services"
+	"playtime-go/utils"
 )
 
 func HandleToken(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodGet {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+	if r.Method != http.MethodGet {
+		utils.ErrorResponse(w, "Method not allowed", 405, http.StatusMethodNotAllowed)
+		return
+	}
 
-    token, err := services.GetToken()
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	token, err := services.GetToken()
+	if err != nil {
+		utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(token)
+	utils.SuccessResponse(w, token, http.StatusOK)
 }
