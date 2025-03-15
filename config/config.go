@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"sync"
 )
@@ -33,6 +34,8 @@ func GetConfig() *Config {
 			MongoTimeout: 10, // 10 seconds timeout
 		}
 	})
+
+	log.Printf("Config: %+v", instance)
 	return instance
 }
 

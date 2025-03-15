@@ -20,6 +20,7 @@ func main() {
 	router.HandleFunc("/phone", handlers.HandlePhone)
 	router.HandleFunc("/user", handlers.HandleUser)
 	router.HandleFunc("/user/openid/", handlers.HandleUserByOpenID)
+	router.HandleFunc("/wechat/login", handlers.HandleLogin)
 
 	// Initialize MongoDB (connection is created on first use)
 	db.GetMongoClient()
