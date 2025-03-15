@@ -12,8 +12,8 @@ type User struct {
 	NickName    string             `json:"nickName" bson:"nickName"`
 	PhoneNumber string             `json:"phoneNumber" bson:"phoneNumber"`
 	AvatarURL   string             `json:"avatarUrl" bson:"avatarUrl"`
-	OpenID	  string             `json:"openId" bson:"openId"`
-	unionID     string             `json:"unionId" bson:"unionId"`
+	OpenID      string             `json:"openId" bson:"openId"`
+	UnionID     string             `json:"unionId" bson:"unionId"`
 	CreatedAt   time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt   time.Time          `json:"updatedAt" bson:"updatedAt"`
 }

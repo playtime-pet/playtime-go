@@ -19,13 +19,14 @@ func main() {
 	router.HandleFunc("/token", handlers.HandleToken)
 	router.HandleFunc("/phone", handlers.HandlePhone)
 	router.HandleFunc("/user", handlers.HandleUser)
-	
+	router.HandleFunc("/user/openid/", handlers.HandleUserByOpenID)
+
 	// Initialize MongoDB (connection is created on first use)
 	db.GetMongoClient()
 
 	// Setup graceful shutdown
 	setupGracefulShutdown()
-	
+
 	// Start the server
 	fmt.Println("Server starting on :8080...")
 	if err := http.ListenAndServe(":8080", router); err != nil {
@@ -41,10 +42,10 @@ func setupGracefulShutdown() {
 	go func() {
 		<-c
 		fmt.Println("Shutting down server...")
-		
+
 		// Clean up resources
 		db.CloseMongoClient()
-		
+
 		fmt.Println("Server gracefully stopped")
 		os.Exit(0)
 	}()

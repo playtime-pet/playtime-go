@@ -1,9 +1,7 @@
 package services
 
 import (
-	"context"
 	"fmt"
-	"playtime-go/db"
 	"playtime-go/models"
 	"time"
 
@@ -13,17 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const (
-	userCollection = "users"
-	timeout        = 10 * time.Second
-)
-
-// CreateUser creates a new user in the database
+// CreateUser creates a new user from a request
 func CreateUser(request models.UserRequest) (*models.User, error) {
-	collection := db.GetCollection(userCollection)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
 	// Check if user with this phone number already exists
 	existingUser, err := GetUserByPhone(request.PhoneNumber)
 	if err != nil && err != mongo.ErrNoDocuments {
@@ -41,32 +30,28 @@ func CreateUser(request models.UserRequest) (*models.User, error) {
 		NickName:    request.NickName,
 		PhoneNumber: request.PhoneNumber,
 		AvatarURL:   request.AvatarURL,
+		OpenID:      request.OpenID,
+		UnionID:     request.UnionID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 
 	// Insert user into database
-	result, err := collection.InsertOne(ctx, user)
+	id, err := InsertOne(userCollection, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %v", err)
 	}
 
-	// Get the inserted ID and set it on the user
-	if objectID, ok := result.InsertedID.(interface{}); ok {
-		user.ID = objectID.(primitive.ObjectID)
-	}
-
+	user.ID = id
 	return &user, nil
 }
 
 // GetUserByPhone retrieves a user by phone number
 func GetUserByPhone(phoneNumber string) (*models.User, error) {
-	collection := db.GetCollection(userCollection)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
+	filter := bson.M{"phoneNumber": phoneNumber}
 	var user models.User
-	err := collection.FindOne(ctx, bson.M{"phoneNumber": phoneNumber}).Decode(&user)
+
+	err := FindOne(userCollection, filter, &user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, err
@@ -79,12 +64,10 @@ func GetUserByPhone(phoneNumber string) (*models.User, error) {
 
 // GetUserByID retrieves a user by their ObjectID
 func GetUserByID(id primitive.ObjectID) (*models.User, error) {
-	collection := db.GetCollection(userCollection)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
+	filter := bson.M{"_id": id}
 	var user models.User
-	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+
+	err := FindOne(userCollection, filter, &user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no user found with ID: %s", id.Hex())
@@ -95,26 +78,35 @@ func GetUserByID(id primitive.ObjectID) (*models.User, error) {
 	return &user, nil
 }
 
+// GetUserByOpenID retrieves a user by their OpenID
+func GetUserByOpenID(openID string) (*models.User, error) {
+	filter := bson.M{"openId": openID}
+	var user models.User
+
+	err := FindOne(userCollection, filter, &user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("no user found with OpenID: %s", openID)
+		}
+		return nil, fmt.Errorf("failed to get user by OpenID: %v", err)
+	}
+
+	return &user, nil
+}
+
 // ListUsers retrieves all users with optional pagination
 func ListUsers() ([]models.User, error) {
-	collection := db.GetCollection(userCollection)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	filter := bson.M{}
+	var users []models.User
 
-	// Options for sorting by creation time (descending)
+	// Set options for sorting by creation time (descending) and limit
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	findOptions.SetLimit(100) // Limiting to 100 users for safety
 
-	cursor, err := collection.Find(ctx, bson.M{}, findOptions)
+	err := FindMany(userCollection, filter, &users, findOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %v", err)
-	}
-	defer cursor.Close(ctx)
-
-	var users []models.User
-	if err := cursor.All(ctx, &users); err != nil {
-		return nil, fmt.Errorf("failed to decode users: %v", err)
 	}
 
 	return users, nil

@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"playtime-go/models"
 	"playtime-go/services"
-	
+	"strings"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -98,6 +98,36 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	// Handle errors
 	if err != nil {
 		if strings.Contains(err.Error(), "no documents") || strings.Contains(err.Error(), "no user found") {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+
+// HandleUserByOpenID handles requests to get a user by OpenID
+func HandleUserByOpenID(w http.ResponseWriter, r *http.Request) {
+	// Only accept GET requests
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	openID := strings.TrimPrefix(r.URL.Path, "/user/openid/")
+	if openID == "" {
+		http.Error(w, "OpenID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get user by OpenID
+	user, err := services.GetUserByOpenID(openID)
+	if err != nil {
+		if strings.Contains(err.Error(), "no user found") {
 			http.Error(w, "User not found", http.StatusNotFound)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

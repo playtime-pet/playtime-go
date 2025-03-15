@@ -29,7 +29,7 @@ func GetConfig() *Config {
 			MongoURI:     getEnv("MONGO_URI", "mongodb://localhost:27017"),
 			MongoDB:      getEnv("MONGO_DB", "playtime"),
 			MongoUser:    getEnv("MONGO_USER", "admin"),
-			MongoPass:    getEnv("MONGO_PASS", ""),
+			MongoPass:    getEnv("MONGO_PASS", "admin"),
 			MongoTimeout: 10, // 10 seconds timeout
 		}
 	})

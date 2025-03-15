@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"playtime-go/config"
 	"sync"
@@ -26,7 +27,8 @@ func GetMongoClient() *mongo.Client {
 
 		// Create client options
 		clientOptions := options.Client().ApplyURI(cfg.MongoURI)
-		
+
+		fmt.Println(cfg)
 		// Add credentials if username and password are provided
 		if cfg.MongoUser != "" && cfg.MongoPass != "" {
 			credential := options.Credential{
@@ -35,7 +37,7 @@ func GetMongoClient() *mongo.Client {
 			}
 			clientOptions.SetAuth(credential)
 		}
-		
+
 		// Connect to MongoDB
 		var err error
 		client, err = mongo.Connect(ctx, clientOptions)
