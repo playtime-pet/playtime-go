@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"playtime-go/models"
 	"playtime-go/services"
@@ -11,6 +12,7 @@ import (
 
 // HandlePhone handles requests to get user's phone number
 func HandlePhone(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Handling phone request %s", r.Method)
 	// Only accept POST requests
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, "Method not allowed", 405, http.StatusMethodNotAllowed)
@@ -41,6 +43,7 @@ func HandlePhone(w http.ResponseWriter, r *http.Request) {
 	// Call service to get phone number
 	phoneResponse, err := services.GetPhoneNumber(request.Code)
 	if err != nil {
+		log.Printf("Failed to get phone number: %v", err)
 		utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		return
 	}

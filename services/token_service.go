@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"playtime-go/config"
 	"playtime-go/models"
@@ -32,10 +33,11 @@ func GetToken() (models.Token, error) {
 // FetchNewToken gets a new access token from WeChat API
 func FetchNewToken() (models.Token, error) {
 	cfg := config.GetConfig()
-	
+
+	log.Println("Fetching new token from WeChat API")
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=%s&secret=%s",
 		cfg.AppID, cfg.AppSecret)
-	
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return models.Token{}, fmt.Errorf("failed to fetch token: %v", err)
@@ -58,5 +60,6 @@ func FetchNewToken() (models.Token, error) {
 	tokenTime = time.Now()
 	tokenMutex.Unlock()
 
+	log.Printf("Fetched new token successfully, %v", newToken)
 	return newToken, nil
 }
