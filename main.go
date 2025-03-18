@@ -21,6 +21,8 @@ func main() {
 	router.HandleFunc("/user", handlers.HandleUser)
 	router.HandleFunc("/user/openid/", handlers.HandleUserByOpenID)
 	router.HandleFunc("/wechat/login", handlers.HandleLogin)
+	router.HandleFunc("/pet", handlers.HandlePet)
+	router.HandleFunc("/pet/", handlers.HandlePet) // This will catch all /pet/* paths
 
 	// Initialize MongoDB (connection is created on first use)
 	db.GetMongoClient()
