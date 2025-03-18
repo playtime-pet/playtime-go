@@ -23,6 +23,7 @@ func GetToken() (models.Token, error) {
 	// If token exists and is not expired (with 5 min buffer), return it
 	if token.AccessToken != "" && time.Since(tokenTime).Seconds() < float64(token.ExpiresIn-300) {
 		defer tokenMutex.RUnlock()
+		log.Printf("Returning cached token: %v", token)
 		return token, nil
 	}
 	tokenMutex.RUnlock()

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"sync"
 )
@@ -35,7 +34,6 @@ func GetConfig() *Config {
 		}
 	})
 
-	log.Printf("Config: %+v", instance)
 	return instance
 }
 

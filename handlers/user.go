@@ -3,12 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"playtime-go/models"
 	"playtime-go/services"
 	"playtime-go/utils"
 	"strings"
+	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -17,7 +20,7 @@ func HandleUser(w http.ResponseWriter, r *http.Request) {
 	// Handle request based on method
 	switch r.Method {
 	case http.MethodPost:
-		createUser(w, r)
+		upsertUser(w, r)
 	case http.MethodGet:
 		getUser(w, r)
 	default:
@@ -25,7 +28,7 @@ func HandleUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createUser(w http.ResponseWriter, r *http.Request) {
+func upsertUser(w http.ResponseWriter, r *http.Request) {
 	// Read request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -47,15 +50,65 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call service to create user
-	user, err := services.CreateUser(request)
-	if err != nil {
-		utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
+	if request.OpenID == "" {
+		utils.ErrorResponse(w, "OpenID is required", 400, http.StatusBadRequest)
 		return
 	}
 
-	// Return response
-	utils.SuccessResponse(w, user, http.StatusCreated)
+	var user *models.User
+	var isNewUser bool = true
+
+	// Check if user exists with the given OpenID
+	existingUser, err := services.GetUserByOpenID(request.OpenID)
+	if err == nil && existingUser != nil {
+		// User exists, update their information
+		log.Printf("User found with OpenID %s, updating user", request.OpenID)
+
+		// Prepare update document
+		now := time.Now()
+		updateData := bson.M{
+			"$set": bson.M{
+				"nickName":    request.NickName,
+				"phoneNumber": request.PhoneNumber,
+				"avatarUrl":   request.AvatarURL,
+				"unionId":     request.UnionID,
+				"updatedAt":   now,
+			},
+		}
+
+		// Update user in the database - Fix: Use the constant from services package
+		filter := bson.M{"openId": request.OpenID}
+		err = services.UpdateOne("users", filter, updateData)
+		if err != nil {
+			utils.ErrorResponse(w, "Failed to update user: "+err.Error(), 500, http.StatusInternalServerError)
+			return
+		}
+
+		// Get the updated user
+		user, err = services.GetUserByOpenID(request.OpenID)
+		if err != nil {
+			utils.ErrorResponse(w, "Failed to retrieve updated user: "+err.Error(), 500, http.StatusInternalServerError)
+			return
+		}
+
+		isNewUser = false
+	} else {
+		// User doesn't exist, create a new one
+		log.Printf("No user found with OpenID %s, creating new user", request.OpenID)
+		user, err = services.CreateUser(request)
+		if err != nil {
+			utils.ErrorResponse(w, "Failed to create user: "+err.Error(), 500, http.StatusInternalServerError)
+			return
+		}
+		isNewUser = true
+	}
+
+	// Return success response with appropriate status code
+	statusCode := http.StatusOK
+	if isNewUser {
+		statusCode = http.StatusCreated
+	}
+	utils.SuccessResponse(w, user, statusCode)
 }
 
 // getUser handles GET requests to retrieve user information
@@ -78,7 +131,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 			utils.ErrorResponse(w, "Invalid user ID format", 400, http.StatusBadRequest)
 			return
 		}
-		user, err = services.GetUserByID(objectID)
+		user, _ = services.GetUserByID(objectID)
 		// if err != nil {
 		// 	utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
 		// 	return
