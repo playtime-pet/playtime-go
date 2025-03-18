@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"playtime-go/models"
 	"playtime-go/services"
@@ -15,20 +14,36 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// HandleUser handles user creation and retrieval
+// HandleUser handles user creation, retrieval, update, and deletion
 func HandleUser(w http.ResponseWriter, r *http.Request) {
-	// Handle request based on method
-	switch r.Method {
-	case http.MethodPost:
-		upsertUser(w, r)
-	case http.MethodGet:
-		getUser(w, r)
+	// Extract user ID from URL if present (for specific user operations)
+	urlParts := strings.Split(r.URL.Path, "/")
+	var userID string
+
+	// Check if we have a user ID in the URL
+	if len(urlParts) > 2 && urlParts[1] == "user" && urlParts[2] != "" {
+		userID = urlParts[2]
+	}
+
+	// Handle request based on method and whether we have a specific user ID
+	switch {
+	case r.Method == http.MethodPost && userID == "":
+		createUser(w, r)
+	case r.Method == http.MethodGet && userID == "":
+		listUsers(w, r)
+	case r.Method == http.MethodGet && userID != "":
+		getUser(w, r, userID)
+	case r.Method == http.MethodPut && userID != "":
+		updateUser(w, r, userID)
+	case r.Method == http.MethodDelete && userID != "":
+		deleteUser(w, r, userID)
 	default:
-		utils.ErrorResponse(w, "Method not allowed", 400, http.StatusBadRequest)
+		utils.ErrorResponse(w, "Method not allowed or invalid URL", 405, http.StatusMethodNotAllowed)
 	}
 }
 
-func upsertUser(w http.ResponseWriter, r *http.Request) {
+// createUser handles POST requests to create a new user
+func createUser(w http.ResponseWriter, r *http.Request) {
 	// Read request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -55,113 +70,153 @@ func upsertUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user *models.User
-	var isNewUser bool = true
-
-	// Check if user exists with the given OpenID
+	// Check if user already exists with the given OpenID
 	existingUser, err := services.GetUserByOpenID(request.OpenID)
 	if err == nil && existingUser != nil {
-		// User exists, update their information
-		log.Printf("User found with OpenID %s, updating user", request.OpenID)
-
-		// Prepare update document
-		now := time.Now()
-		updateData := bson.M{
-			"$set": bson.M{
-				"nickName":    request.NickName,
-				"phoneNumber": request.PhoneNumber,
-				"avatarUrl":   request.AvatarURL,
-				"unionId":     request.UnionID,
-				"updatedAt":   now,
-			},
-		}
-
-		// Update user in the database - Fix: Use the constant from services package
-		filter := bson.M{"openId": request.OpenID}
-		err = services.UpdateOne("users", filter, updateData)
-		if err != nil {
-			utils.ErrorResponse(w, "Failed to update user: "+err.Error(), 500, http.StatusInternalServerError)
-			return
-		}
-
-		// Get the updated user
-		user, err = services.GetUserByOpenID(request.OpenID)
-		if err != nil {
-			utils.ErrorResponse(w, "Failed to retrieve updated user: "+err.Error(), 500, http.StatusInternalServerError)
-			return
-		}
-
-		isNewUser = false
-	} else {
-		// User doesn't exist, create a new one
-		log.Printf("No user found with OpenID %s, creating new user", request.OpenID)
-		user, err = services.CreateUser(request)
-		if err != nil {
-			utils.ErrorResponse(w, "Failed to create user: "+err.Error(), 500, http.StatusInternalServerError)
-			return
-		}
-		isNewUser = true
-	}
-
-	// Return success response with appropriate status code
-	statusCode := http.StatusOK
-	if isNewUser {
-		statusCode = http.StatusCreated
-	}
-	utils.SuccessResponse(w, user, statusCode)
-}
-
-// getUser handles GET requests to retrieve user information
-func getUser(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters
-	query := r.URL.Query()
-	id := query.Get("id")
-	phone := query.Get("phone")
-
-	var (
-		user interface{}
-		err  error
-	)
-
-	// Based on provided parameters, fetch user
-	if id != "" {
-		// Convert string ID to ObjectID
-		objectID, err := primitive.ObjectIDFromHex(id)
-		if err != nil {
-			utils.ErrorResponse(w, "Invalid user ID format", 400, http.StatusBadRequest)
-			return
-		}
-		user, _ = services.GetUserByID(objectID)
-		// if err != nil {
-		// 	utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
-		// 	return
-		// }
-	} else if phone != "" {
-		user, err = services.GetUserByPhone(phone)
-	} else {
-		// If neither ID nor phone is provided, return all users
-		users, listErr := services.ListUsers()
-		if listErr != nil {
-			utils.ErrorResponse(w, listErr.Error(), 500, http.StatusInternalServerError)
-			return
-		}
-		// Return response
-		utils.SuccessResponse(w, users, http.StatusOK)
+		utils.ErrorResponse(w, "User with this OpenID already exists", 409, http.StatusConflict)
 		return
 	}
 
-	// Handle errors
+	// Call service to create user
+	user, err := services.CreateUser(request)
 	if err != nil {
-		if strings.Contains(err.Error(), "no documents") || strings.Contains(err.Error(), "no user found") {
+		utils.ErrorResponse(w, "Failed to create user: "+err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	utils.SuccessResponse(w, user, http.StatusCreated)
+}
+
+// listUsers handles GET requests to list users with optional filtering
+func listUsers(w http.ResponseWriter, r *http.Request) {
+	// Get users from service
+	users, err := services.ListUsers()
+	if err != nil {
+		utils.ErrorResponse(w, "Failed to list users: "+err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	utils.SuccessResponse(w, users, http.StatusOK)
+}
+
+// getUser handles GET requests to retrieve a specific user
+func getUser(w http.ResponseWriter, r *http.Request, userID string) {
+	// Validate user ID
+	id, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		utils.ErrorResponse(w, "Invalid user ID format", 400, http.StatusBadRequest)
+		return
+	}
+
+	// Get the user
+	user, err := services.GetUserByID(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "no user found") {
 			utils.ErrorResponse(w, "User not found", 404, http.StatusNotFound)
 		} else {
-			utils.ErrorResponse(w, err.Error(), 500, http.StatusInternalServerError)
+			utils.ErrorResponse(w, "Failed to get user: "+err.Error(), 500, http.StatusInternalServerError)
 		}
 		return
 	}
 
 	// Return response
 	utils.SuccessResponse(w, user, http.StatusOK)
+}
+
+// updateUser handles PUT requests to update a specific user
+func updateUser(w http.ResponseWriter, r *http.Request, userID string) {
+	// Validate user ID
+	id, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		utils.ErrorResponse(w, "Invalid user ID format", 400, http.StatusBadRequest)
+		return
+	}
+
+	// Read request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		utils.ErrorResponse(w, "Failed to read request body", 400, http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Parse request body
+	var request models.UserRequest
+	if err := json.Unmarshal(body, &request); err != nil {
+		utils.ErrorResponse(w, "Invalid request format", 400, http.StatusBadRequest)
+		return
+	}
+
+	// Validate request
+	if request.PhoneNumber == "" {
+		utils.ErrorResponse(w, "Phone number is required", 400, http.StatusBadRequest)
+		return
+	}
+
+	// Prepare update document
+	now := time.Now()
+	updateData := bson.M{
+		"$set": bson.M{
+			"nickName":    request.NickName,
+			"phoneNumber": request.PhoneNumber,
+			"avatarUrl":   request.AvatarURL,
+			"openId":      request.OpenID,
+			"unionId":     request.UnionID,
+			"updatedAt":   now,
+		},
+	}
+
+	// Update user in the database
+	filter := bson.M{"_id": id}
+	err = services.UpdateOne("users", filter, updateData)
+	if err != nil {
+		utils.ErrorResponse(w, "Failed to update user: "+err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
+
+	// Get the updated user
+	user, err := services.GetUserByID(id)
+	if err != nil {
+		utils.ErrorResponse(w, "User updated but failed to retrieve: "+err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	utils.SuccessResponse(w, user, http.StatusOK)
+}
+
+// deleteUser handles DELETE requests to remove a user
+func deleteUser(w http.ResponseWriter, r *http.Request, userID string) {
+	// Validate user ID
+	id, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		utils.ErrorResponse(w, "Invalid user ID format", 400, http.StatusBadRequest)
+		return
+	}
+
+	// Check if user exists
+	_, err = services.GetUserByID(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "no user found") {
+			utils.ErrorResponse(w, "User not found", 404, http.StatusNotFound)
+		} else {
+			utils.ErrorResponse(w, "Failed to find user: "+err.Error(), 500, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Delete user from the database
+	filter := bson.M{"_id": id}
+	err = services.DeleteOne("users", filter)
+	if err != nil {
+		utils.ErrorResponse(w, "Failed to delete user: "+err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	utils.SuccessResponse(w, map[string]string{"message": "User deleted successfully"}, http.StatusOK)
 }
 
 // HandleUserByOpenID handles requests to get a user by OpenID
