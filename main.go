@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"playtime-go/db"
 	"playtime-go/handlers"
+	"playtime-go/services"
 	"syscall"
 )
 
@@ -25,9 +26,17 @@ func main() {
 	router.HandleFunc("/wechat/upload", handlers.HandleUpload) // Add the new upload endpoint
 	router.HandleFunc("/pet", handlers.HandlePet)
 	router.HandleFunc("/pet/", handlers.HandlePet) // This will catch all /pet/* paths
+	router.HandleFunc("/map", handlers.HandleMap)
+	router.HandleFunc("/map/", handlers.HandleMap)
+	router.HandleFunc("/map/search", handlers.HandleMap)
 
 	// Initialize MongoDB (connection is created on first use)
 	db.GetMongoClient()
+
+	// Create geospatial index for locations
+	if err := services.EnsureLocationIndexes(); err != nil {
+		log.Printf("Warning: Failed to create geospatial index: %v", err)
+	}
 
 	// Setup graceful shutdown
 	setupGracefulShutdown()
