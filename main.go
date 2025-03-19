@@ -22,6 +22,7 @@ func main() {
 	router.HandleFunc("/user/", handlers.HandleUser) // This will catch all /user/* paths
 	router.HandleFunc("/user/openid/", handlers.HandleUserByOpenID)
 	router.HandleFunc("/wechat/login", handlers.HandleLogin)
+	router.HandleFunc("/wechat/upload", handlers.HandleUpload) // Add the new upload endpoint
 	router.HandleFunc("/pet", handlers.HandlePet)
 	router.HandleFunc("/pet/", handlers.HandlePet) // This will catch all /pet/* paths
 

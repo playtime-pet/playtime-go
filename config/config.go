@@ -13,6 +13,9 @@ type Config struct {
 	MongoUser    string
 	MongoPass    string
 	MongoTimeout int
+	COSSecretID  string
+	COSSecretKey string
+	COSBucketURL string
 }
 
 var (
@@ -31,6 +34,9 @@ func GetConfig() *Config {
 			MongoUser:    getEnv("MONGO_USER", "admin"),
 			MongoPass:    getEnv("MONGO_PASS", "admin"),
 			MongoTimeout: 10, // 10 seconds timeout
+			COSSecretID:  getEnv("COS_SECRET_ID", ""),
+			COSSecretKey: getEnv("COS_SECRET_KEY", ""),
+			COSBucketURL: getEnv("COS_BUCKET_URL", "https://blog-1321748307.cos.ap-beijing.myqcloud.com"),
 		}
 	})
 
