@@ -1,6 +1,7 @@
 before running this project, you need to set the following environment variables:
 WECHAT_APPID
 WECHAT_SECRET
+WECHAT_MINI_MAP_API
 MONGO_USER
 MONGO_PASS
 COS_SECRET_ID

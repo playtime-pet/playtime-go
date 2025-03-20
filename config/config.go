@@ -8,6 +8,7 @@ import (
 type Config struct {
 	AppID        string
 	AppSecret    string
+	MiniMapKey   string
 	MongoURI     string
 	MongoDB      string
 	MongoUser    string
@@ -29,6 +30,7 @@ func GetConfig() *Config {
 		instance = &Config{
 			AppID:        getEnv("WECHAT_APPID", ""),
 			AppSecret:    getEnv("WECHAT_SECRET", ""),
+			MiniMapKey:   getEnv("WECHAT_MINI_MAP_API", ""),
 			MongoURI:     getEnv("MONGO_URI", "mongodb://localhost:27017"),
 			MongoDB:      getEnv("MONGO_DB", "playtime"),
 			MongoUser:    getEnv("MONGO_USER", "admin"),

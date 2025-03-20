@@ -3,9 +3,39 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"playtime-go/config"
 	"playtime-go/services"
 	"playtime-go/utils"
 )
+
+func HandleWechat(w http.ResponseWriter, r *http.Request) {
+	// Extract path for more specific handlers
+	path := r.URL.Path
+	path = path[len("/wechat/"):]
+
+	// Route to the appropriate handler based on the path and method
+	switch {
+	case path == "auth":
+		handleWechatAuth(w, r)
+	case path == "login" && r.Method == http.MethodGet:
+		HandleLogin(w, r)
+	case path == "upload" && r.Method == http.MethodPost:
+		HandleUpload(w, r)
+	default:
+		utils.ErrorResponse(w, "Method not allowed or invalid URL", 405, http.StatusMethodNotAllowed)
+	}
+}
+
+func handleWechatAuth(w http.ResponseWriter, r *http.Request) {
+	// Extract path for more specific handlers
+	cfg := config.GetConfig()
+	if cfg.MiniMapKey == "" {
+		utils.ErrorResponse(w, "MiniMap API key is not set", 500, http.StatusInternalServerError)
+		return
+	}
+
+	utils.SuccessResponse(w, map[string]string{"key": cfg.MiniMapKey}, http.StatusOK)
+}
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 
