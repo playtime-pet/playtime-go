@@ -198,7 +198,7 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 		limit = 10 // Default limit: 10 results
 	}
 
-	// Create the $geoNear pipeline stage
+	// Create the $geoNear pipeline stage - Remove limit parameter from here
 	geoNearStage := bson.D{
 		{Key: "$geoNear", Value: bson.D{
 			{Key: "near", Value: bson.D{
@@ -208,13 +208,14 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 			{Key: "distanceField", Value: "distance"},
 			{Key: "maxDistance", Value: radius},
 			{Key: "spherical", Value: true},
-			{Key: "limit", Value: limit},
+			// Removed: {Key: "limit", Value: limit},
 		}},
 	}
 
-	// Add filtering by keyword if provided
+	// Initialize pipeline with geoNear stage
 	pipeline := []bson.D{geoNearStage}
 	
+	// Add filtering by keyword if provided
 	if search.Keyword != "" {
 		// Text search across multiple fields
 		matchStage := bson.D{
@@ -222,7 +223,8 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 				{Key: "$or", Value: []bson.D{
 					{{Key: "name", Value: bson.D{{Key: "$regex", Value: search.Keyword}, {Key: "$options", Value: "i"}}}},
 					{{Key: "description", Value: bson.D{{Key: "$regex", Value: search.Keyword}, {Key: "$options", Value: "i"}}}},
-					{{Key: "tags", Value: bson.D{{Key: "$regex", Value: search.Keyword}, {Key: "$options", Value: "i"}}}},
+					// Keep if you have tags field, comment out if not
+					// {{Key: "tags", Value: bson.D{{Key: "$regex", Value: search.Keyword}, {Key: "$options", Value: "i"}}}},
 				}},
 			}},
 		}
@@ -238,6 +240,10 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 		}
 		pipeline = append(pipeline, categoryStage)
 	}
+	
+	// Add limit stage at the end of the pipeline
+	limitStage := bson.D{{Key: "$limit", Value: limit}}
+	pipeline = append(pipeline, limitStage)
 
 	// Execute the aggregation
 	cursor, err := collection.Aggregate(ctx, pipeline)
@@ -246,24 +252,38 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 	}
 	defer cursor.Close(ctx)
 
-	// Structure to decode the aggregation results
-	type aggregateResult struct {
-		models.Location
-		Distance float64 `bson:"distance"`
-	}
-
-	// Process results
+	// Process results - this is where the fix is needed
 	var results []models.SearchResult
-	var aggResult aggregateResult
 	
+	// Use a map to hold each document with its distance field
 	for cursor.Next(ctx) {
-		if err := cursor.Decode(&aggResult); err != nil {
+		// Use a raw document to decode
+		var rawDoc bson.M
+		if err := cursor.Decode(&rawDoc); err != nil {
 			return nil, fmt.Errorf("failed to decode search result: %v", err)
 		}
 		
+		// Extract the distance
+		distance, _ := rawDoc["distance"].(float64)
+		
+		// Delete the distance field from the document
+		delete(rawDoc, "distance")
+		
+		// Marshal and unmarshal to convert to a Location object
+		bsonData, err := bson.Marshal(rawDoc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal document: %v", err)
+		}
+		
+		var location models.Location
+		if err := bson.Unmarshal(bsonData, &location); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal to location: %v", err)
+		}
+		
+		// Add to results
 		results = append(results, models.SearchResult{
-			Location: aggResult.Location,
-			Distance: aggResult.Distance,
+			Location: location,
+			Distance: distance,
 		})
 	}
 
