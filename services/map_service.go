@@ -23,21 +23,31 @@ const locationCollection = "locations"
 func CreateLocation(request models.LocationRequest) (*models.Location, error) {
 	// Create new location with GeoJSON point for MongoDB geospatial queries
 	now := time.Now()
+	
+	// Prepare tags based on pet-friendly information
+	// tags := generateTags(request)
+	
+	// Determine category based on zone if not explicitly provided
+	category := request.Zone
+	
 	location := models.Location{
-		Name:        request.Name,
-		Address:     request.Address,
-		Description: request.Description,
-		Category:    request.Category,
-		Tags:        request.Tags,
+		Name:             request.Name,
+		Address:          request.Address,
+		Description:      request.Description,
+		Category:         category,
+		// Tags:             tags,
 		Location: models.GeoLocation{
 			Type:        "Point",
 			Coordinates: []float64{request.Longitude, request.Latitude}, // GeoJSON format: [longitude, latitude]
 		},
-		Phone:     request.Phone,
-		Website:   request.Website,
-		PhotoURLs: request.PhotoURLs,
-		CreatedAt: now,
-		UpdatedAt: now,
+		IsPetFriendly:    request.IsPetFriendly,
+		PetSize:          request.PetSize,
+		PetType:          request.PetType,
+		Zone:             request.Zone,
+		AddressComponent: request.AddressComponent,
+		AdInfo:           request.AdInfo,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	// Insert location into database
@@ -48,6 +58,21 @@ func CreateLocation(request models.LocationRequest) (*models.Location, error) {
 
 	location.ID = id
 	return &location, nil
+}
+
+// Helper function to generate tags from pet-friendly information
+func generateTags(request models.LocationRequest) []string {
+	tags := []string{}
+	if request.IsPetFriendly {
+		tags = append(tags, "pet-friendly")
+		if request.PetSize != "" {
+			tags = append(tags, "pet-size-"+request.PetSize)
+		}
+		if request.PetType != "" {
+			tags = append(tags, "pet-type-"+request.PetType)
+		}
+	}
+	return tags
 }
 
 // GetLocationByID retrieves a location by ID
@@ -78,18 +103,21 @@ func UpdateLocation(id primitive.ObjectID, request models.LocationRequest) (*mod
 	now := time.Now()
 	updateData := bson.M{
 		"$set": bson.M{
-			"name":        request.Name,
-			"address":     request.Address,
-			"description": request.Description,
-			"category":    request.Category,
-			"tags":        request.Tags,
+			"name":             request.Name,
+			"address":          request.Address,
+			"description":      request.Description,
+			"isPetFriendly":    request.IsPetFriendly,
+			"petSize":          request.PetSize,
+			"petType":          request.PetType,
+			"zone":             request.Zone,
+			"addressComponent": request.AddressComponent,
+			"adInfo":           request.AdInfo,
+			"category":         request.Zone,
+			// "tags":             generateTags(request),
 			"location": bson.M{
 				"type":        "Point",
 				"coordinates": []float64{request.Longitude, request.Latitude},
 			},
-			"phone":     request.Phone,
-			"website":   request.Website,
-			"photoUrls": request.PhotoURLs,
 			"updatedAt": now,
 		},
 	}
@@ -273,7 +301,7 @@ func ReverseGeocode(lat string, lng string) (interface{}, error) {
 	// Get the API key from config
 	cfg := config.GetConfig()
 	if cfg.MiniMapKey == "" {
-		return nil, fmt.Errorf("Tencent Map API key is not configured")
+		return nil, fmt.Errorf("tencent map API key is not configured")
 	}
 
 	// Build request URL with parameters
@@ -295,7 +323,7 @@ func ReverseGeocode(lat string, lng string) (interface{}, error) {
 	
 	// Check if the request was successful
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Tencent Maps API returned non-200 status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("tencent maps API returned non-200 status code: %d", resp.StatusCode)
 	}
 	
 	// Parse the response
@@ -306,7 +334,7 @@ func ReverseGeocode(lat string, lng string) (interface{}, error) {
 	
 	// Check if the API returned an error
 	if geocodeResponse.Status != 0 {
-		return nil, fmt.Errorf("Tencent Maps API error: %d - %s", geocodeResponse.Status, geocodeResponse.Message)
+		return nil, fmt.Errorf("tencent maps API error: %d - %s", geocodeResponse.Status, geocodeResponse.Message)
 	}
 	
 	// Return the result

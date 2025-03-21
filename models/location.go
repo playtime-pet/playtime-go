@@ -14,32 +14,56 @@ type GeoLocation struct {
 
 // Location represents a stored location in the system
 type Location struct {
-	ID          primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Name        string             `json:"name" bson:"name"`
-	Address     string             `json:"address" bson:"address"`
-	Description string             `json:"description" bson:"description"`
-	Category    string             `json:"category" bson:"category"`
-	Tags        []string           `json:"tags" bson:"tags"`
-	Location    GeoLocation        `json:"location" bson:"location"` // GeoJSON format for MongoDB
-	Phone       string             `json:"phone" bson:"phone"`
-	Website     string             `json:"website" bson:"website"`
-	PhotoURLs   []string           `json:"photoUrls" bson:"photoUrls"`
-	CreatedAt   time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt   time.Time          `json:"updatedAt" bson:"updatedAt"`
+	ID               primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	Name             string             `json:"name" bson:"name"`
+	Address          string             `json:"address" bson:"address"`
+	Description      string             `json:"description" bson:"description"`
+	Category         string             `json:"category" bson:"category"`
+	// Tags             []string           `json:"tags" bson:"tags"`
+	Location         GeoLocation        `json:"location" bson:"location"` // GeoJSON format for MongoDB
+	// Phone            string             `json:"phone,omitempty" bson:"phone,omitempty"`
+	// Website          string             `json:"website,omitempty" bson:"website,omitempty"`
+	PhotoURLs        []string           `json:"photoUrls,omitempty" bson:"photoUrls,omitempty"`
+	IsPetFriendly    bool               `json:"isPetFriendly" bson:"isPetFriendly"`
+	PetSize          string             `json:"petSize" bson:"petSize"`
+	PetType          string             `json:"petType" bson:"petType"`
+	Zone             string             `json:"zone" bson:"zone"`
+	AddressComponent AddressComponent   `json:"addressComponent" bson:"addressComponent"`
+	AdInfo           AdInfo             `json:"adInfo" bson:"adInfo"`
+	CreatedAt        time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt        time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
 
 // LocationRequest represents the incoming request to create or update a location
 type LocationRequest struct {
-	Name        string   `json:"name"`
-	Address     string   `json:"address"`
-	Description string   `json:"description"`
-	Category    string   `json:"category"`
-	Tags        []string `json:"tags"`
-	Latitude    float64  `json:"latitude"`
-	Longitude   float64  `json:"longitude"`
-	Phone       string   `json:"phone"`
-	Website     string   `json:"website"`
-	PhotoURLs   []string `json:"photoUrls"`
+	Name             string          `json:"name" bson:"name"`
+	Address          string          `json:"address" bson:"address"`
+	Description      string          `json:"description" bson:"description"`
+	Latitude         float64         `json:"latitude" bson:"latitude"`
+	Longitude        float64         `json:"longitude" bson:"longitude"`
+	IsPetFriendly    bool            `json:"isPetFriendly" bson:"isPetFriendly"`
+	PetSize          string          `json:"petSize" bson:"petSize"`
+	PetType          string          `json:"petType" bson:"petType"`
+	Zone             string          `json:"zone" bson:"zone"`
+	AddressComponent AddressComponent `json:"addressComponent" bson:"addressComponent"`
+	AdInfo           AdInfo           `json:"adInfo" bson:"adInfo"`
+}
+
+type AdInfo struct {
+	AdCode           string `json:"adcode" bson:"adcode"`
+	CityCode         string `json:"city_code" bson:"city_code"`
+	DistrictCode     string `json:"district_code" bson:"district_code"`
+	NationCode       string `json:"nation_code" bson:"nation_code"`
+	NationalityCode  string `json:"nationality_code" bson:"nationality_code"`
+}
+
+type AddressComponent struct {
+	Nation       string `json:"nation" bson:"nation"`
+	Province     string `json:"province" bson:"province"`
+	City         string `json:"city" bson:"city"`
+	District     string `json:"district" bson:"district"`
+	Street       string `json:"street" bson:"street"`
+	StreetNumber string `json:"street_number" bson:"street_number"`
 }
 
 // SearchRequest represents a request to search for nearby locations
@@ -62,46 +86,32 @@ type SearchResult struct {
 type ReverseGeocodeResponse struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
-	Result  struct {
+	Result  ReverseGeocodeResult `json:"result"`
+}
+
+// ReverseGeocodeResult represents the structured result from the geocoding API
+type ReverseGeocodeResult struct {
+	Location struct {
+		Lat float64 `json:"lat"`
+		Lng float64 `json:"lng"`
+	} `json:"location"`
+	Address         string          `json:"address"`
+	AddressComponent AddressComponent `json:"address_component"`
+	AdInfo          AdInfo          `json:"ad_info"`
+	FormattedAddresses struct {
+		Recommend string `json:"recommend"`
+		Rough     string `json:"rough"`
+	} `json:"formatted_addresses"`
+	PoiCount int `json:"poi_count"`
+	Pois     []struct {
+		ID       string `json:"id"`
+		Title    string `json:"title"`
+		Address  string `json:"address"`
+		Category string `json:"category"`
 		Location struct {
 			Lat float64 `json:"lat"`
 			Lng float64 `json:"lng"`
 		} `json:"location"`
-		Address       string `json:"address"`
-		AddressFormat struct {
-			Recommend string `json:"recommend"`
-			Rough     string `json:"rough"`
-		} `json:"address_format"`
-		AddressComponent struct {
-			Nation       string `json:"nation"`
-			Province     string `json:"province"`
-			City         string `json:"city"`
-			District     string `json:"district"`
-			Street       string `json:"street"`
-			StreetNumber string `json:"street_number"`
-		} `json:"address_component"`
-		AdInfo struct {
-			Nation      string `json:"nation_code"`
-			Province    string `json:"adcode"`
-			City        string `json:"city_code"`
-			District    string `json:"district_code"`
-			Nationality string `json:"nationality_code"`
-		} `json:"ad_info"`
-		FormattedAddresses struct {
-			Recommend string `json:"recommend"`
-			Rough     string `json:"rough"`
-		} `json:"formatted_addresses"`
-		PoiCount int `json:"poi_count"`
-		Pois     []struct {
-			ID      string `json:"id"`
-			Title   string `json:"title"`
-			Address string `json:"address"`
-			Category string `json:"category"`
-			Location struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			} `json:"location"`
-			Distance float64 `json:"_distance"`
-		} `json:"pois"`
-	} `json:"result"`
+		Distance float64 `json:"_distance"`
+	} `json:"pois"`
 }
