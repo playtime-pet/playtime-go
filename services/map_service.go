@@ -2,7 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"playtime-go/config"
 	"playtime-go/db"
 	"playtime-go/models"
 	"time"
@@ -262,4 +266,49 @@ func EnsureLocationIndexes() error {
 	}
 
 	return nil
+}
+
+// ReverseGeocode calls Tencent Maps API to convert lat/lng to an address
+func ReverseGeocode(lat string, lng string) (interface{}, error) {
+	// Get the API key from config
+	cfg := config.GetConfig()
+	if cfg.MiniMapKey == "" {
+		return nil, fmt.Errorf("Tencent Map API key is not configured")
+	}
+
+	// Build request URL with parameters
+	baseURL := "https://apis.map.qq.com/ws/geocoder/v1/"
+	params := url.Values{}
+	params.Add("key", cfg.MiniMapKey)
+	params.Add("location", fmt.Sprintf("%s,%s", lat, lng))
+	params.Add("get_poi", "1")  // Get nearby POIs
+	
+	// Build the full URL with parameters
+	apiURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+	
+	// Make HTTP request to Tencent Maps API
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call Tencent Maps API: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	// Check if the request was successful
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Tencent Maps API returned non-200 status code: %d", resp.StatusCode)
+	}
+	
+	// Parse the response
+	var geocodeResponse models.ReverseGeocodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&geocodeResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse Tencent Maps API response: %v", err)
+	}
+	
+	// Check if the API returned an error
+	if geocodeResponse.Status != 0 {
+		return nil, fmt.Errorf("Tencent Maps API error: %d - %s", geocodeResponse.Status, geocodeResponse.Message)
+	}
+	
+	// Return the result
+	return geocodeResponse.Result, nil
 }

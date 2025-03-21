@@ -21,6 +21,8 @@ func HandleWechat(w http.ResponseWriter, r *http.Request) {
 		HandleLogin(w, r)
 	case path == "upload" && r.Method == http.MethodPost:
 		HandleUpload(w, r)
+	case path == "map/reverseGeocode" && r.Method == http.MethodGet:
+		HandleReverseGeocode(w, r)
 	default:
 		utils.ErrorResponse(w, "Method not allowed or invalid URL", 405, http.StatusMethodNotAllowed)
 	}
@@ -115,4 +117,27 @@ func isAllowedImageType(contentType string) bool {
 		"image/webp": true,
 	}
 	return allowedTypes[contentType]
+}
+
+func HandleReverseGeocode(w http.ResponseWriter, r *http.Request) {
+	// Extract query parameters
+	query := r.URL.Query()
+	lat := query.Get("lat")
+	lng := query.Get("lng")
+
+	// Validate latitude and longitude
+	if lat == "" || lng == "" {
+		utils.ErrorResponse(w, "Latitude and longitude are required", 400, http.StatusBadRequest)
+		return
+	}
+
+	// Call service to reverse geocode
+	location, err := services.ReverseGeocode(lat, lng)
+	if err != nil {
+		utils.ErrorResponse(w, "Failed to reverse geocode: "+err.Error(), 500, http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	utils.SuccessResponse(w, location, http.StatusOK)
 }

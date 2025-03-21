@@ -57,3 +57,51 @@ type SearchResult struct {
 	Location Location `json:"location"`
 	Distance float64  `json:"distance"` // Distance to the search point in meters
 }
+
+// ReverseGeocodeResponse represents the response from Tencent Maps API
+type ReverseGeocodeResponse struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Result  struct {
+		Location struct {
+			Lat float64 `json:"lat"`
+			Lng float64 `json:"lng"`
+		} `json:"location"`
+		Address       string `json:"address"`
+		AddressFormat struct {
+			Recommend string `json:"recommend"`
+			Rough     string `json:"rough"`
+		} `json:"address_format"`
+		AddressComponent struct {
+			Nation       string `json:"nation"`
+			Province     string `json:"province"`
+			City         string `json:"city"`
+			District     string `json:"district"`
+			Street       string `json:"street"`
+			StreetNumber string `json:"street_number"`
+		} `json:"address_component"`
+		AdInfo struct {
+			Nation      string `json:"nation_code"`
+			Province    string `json:"adcode"`
+			City        string `json:"city_code"`
+			District    string `json:"district_code"`
+			Nationality string `json:"nationality_code"`
+		} `json:"ad_info"`
+		FormattedAddresses struct {
+			Recommend string `json:"recommend"`
+			Rough     string `json:"rough"`
+		} `json:"formatted_addresses"`
+		PoiCount int `json:"poi_count"`
+		Pois     []struct {
+			ID      string `json:"id"`
+			Title   string `json:"title"`
+			Address string `json:"address"`
+			Category string `json:"category"`
+			Location struct {
+				Lat float64 `json:"lat"`
+				Lng float64 `json:"lng"`
+			} `json:"location"`
+			Distance float64 `json:"_distance"`
+		} `json:"pois"`
+	} `json:"result"`
+}
