@@ -9,6 +9,7 @@ import (
 	"playtime-go/config"
 	"playtime-go/db"
 	"playtime-go/models"
+	"playtime-go/utils"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,34 +21,41 @@ import (
 const locationCollection = "locations"
 
 // CreateLocation creates a new location in the database
-func CreateLocation(request models.LocationRequest) (*models.Location, error) {
+func CreateLocation(request models.LocationRequest) (*models.LocationResponse, error) {
+	// Validate coordinates
+	if request.Latitude == 0 || request.Longitude == 0 {
+		return nil, fmt.Errorf("invalid coordinates: latitude and longitude must be provided")
+	}
+
 	// Create new location with GeoJSON point for MongoDB geospatial queries
 	now := time.Now()
-	
+
 	// Prepare tags based on pet-friendly information
 	// tags := generateTags(request)
-	
+
 	// Determine category based on zone if not explicitly provided
 	category := request.Zone
-	
+	geoLocation := utils.ToGeoJSONPoint(request.Latitude, request.Longitude)
+
+	// Debug log the GeoJSON data
+	fmt.Printf("Creating location with GeoJSON: %+v\n", geoLocation)
+
 	location := models.Location{
-		Name:             request.Name,
-		Address:          request.Address,
-		Description:      request.Description,
-		Category:         category,
-		// Tags:             tags,
-		Location: models.GeoLocation{
-			Type:        "Point",
-			Coordinates: []float64{request.Longitude, request.Latitude}, // GeoJSON format: [longitude, latitude]
+		BaseLocation: models.BaseLocation{
+			Name:             request.Name,
+			Address:          request.Address,
+			Description:      request.Description,
+			Category:         category,
+			IsPetFriendly:    request.IsPetFriendly,
+			PetSize:          request.PetSize,
+			PetType:          request.PetType,
+			Zone:             request.Zone,
+			AddressComponent: request.AddressComponent,
+			AdInfo:           request.AdInfo,
 		},
-		IsPetFriendly:    request.IsPetFriendly,
-		PetSize:          request.PetSize,
-		PetType:          request.PetType,
-		Zone:             request.Zone,
-		AddressComponent: request.AddressComponent,
-		AdInfo:           request.AdInfo,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		Location:  geoLocation,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	// Insert location into database
@@ -57,7 +65,11 @@ func CreateLocation(request models.LocationRequest) (*models.Location, error) {
 	}
 
 	location.ID = id
-	return &location, nil
+	result, _ := ConvertLocationToResponse(location)
+	if result == nil {
+		return nil, fmt.Errorf("failed to convert location to response")
+	}
+	return result, nil
 }
 
 // Helper function to generate tags from pet-friendly information
@@ -76,7 +88,7 @@ func generateTags(request models.LocationRequest) []string {
 }
 
 // GetLocationByID retrieves a location by ID
-func GetLocationByID(id primitive.ObjectID) (*models.Location, error) {
+func GetLocationByID(id primitive.ObjectID) (*models.LocationResponse, error) {
 	filter := bson.M{"_id": id}
 	var location models.Location
 
@@ -88,16 +100,47 @@ func GetLocationByID(id primitive.ObjectID) (*models.Location, error) {
 		return nil, fmt.Errorf("failed to get location by ID: %v", err)
 	}
 
-	return &location, nil
+	result, _ := ConvertLocationToResponse(location)
+	if result == nil {
+		return nil, fmt.Errorf("failed to convert location to response")
+	}
+	return result, nil
+}
+
+func ConvertLocationToResponse(location models.Location) (*models.LocationResponse, error) {
+	if location.Location.Type == "" {
+		return nil, fmt.Errorf("invalid location: missing GeoJSON type")
+	}
+
+	if len(location.Location.Coordinates) == 0 {
+		return nil, fmt.Errorf("invalid location: missing coordinates")
+	}
+
+	latitude, longitude, err := utils.FromGeoJSONPoint(location.Location)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert GeoJSON coordinates: %v", err)
+	}
+
+	response := &models.LocationResponse{
+		ID:           location.ID,
+		BaseLocation: location.BaseLocation,
+		Latitude:     latitude,
+		Longitude:    longitude,
+	}
+
+	fmt.Printf("Converted location: %+v\n", response)
+	return response, nil
 }
 
 // UpdateLocation updates an existing location
-func UpdateLocation(id primitive.ObjectID, request models.LocationRequest) (*models.Location, error) {
+func UpdateLocation(id primitive.ObjectID, request models.LocationRequest) (*models.LocationResponse, error) {
 	// Check if location exists
-	_, err := GetLocationByID(id)
+	existing, err := GetLocationByID(id)
 	if err != nil {
 		return nil, err
 	}
+
+	geoLocation := utils.ToGeoJSONPoint(existing.Latitude, existing.Longitude)
 
 	// Prepare update document with GeoJSON point
 	now := time.Now()
@@ -110,15 +153,11 @@ func UpdateLocation(id primitive.ObjectID, request models.LocationRequest) (*mod
 			"petSize":          request.PetSize,
 			"petType":          request.PetType,
 			"zone":             request.Zone,
-			"addressComponent": request.AddressComponent,
-			"adInfo":           request.AdInfo,
+			"addressComponent": existing.AddressComponent,
+			"adInfo":           existing.AdInfo,
 			"category":         request.Zone,
-			// "tags":             generateTags(request),
-			"location": bson.M{
-				"type":        "Point",
-				"coordinates": []float64{request.Longitude, request.Latitude},
-			},
-			"updatedAt": now,
+			"location":         geoLocation,
+			"updatedAt":        now,
 		},
 	}
 
@@ -130,7 +169,11 @@ func UpdateLocation(id primitive.ObjectID, request models.LocationRequest) (*mod
 	}
 
 	// Get the updated location
-	return GetLocationByID(id)
+	result, _ := GetLocationByID(id)
+	if result == nil {
+		return nil, fmt.Errorf("failed to get updated location")
+	}
+	return result, nil
 }
 
 // DeleteLocation deletes a location by ID
@@ -152,7 +195,7 @@ func DeleteLocation(id primitive.ObjectID) error {
 }
 
 // ListLocations retrieves all locations with optional filtering
-func ListLocations(category string, limit int64) ([]models.Location, error) {
+func ListLocations(category string, limit int64) ([]models.LocationResponse, error) {
 	// Prepare filter
 	filter := bson.M{}
 	if category != "" {
@@ -172,12 +215,35 @@ func ListLocations(category string, limit int64) ([]models.Location, error) {
 		findOptions.SetLimit(100) // Default limit
 	}
 
+	// Fetch locations from database
 	err := FindMany(locationCollection, filter, &locations, findOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list locations: %v", err)
 	}
 
-	return locations, nil
+	// Handle empty result case
+	if len(locations) == 0 {
+		return []models.LocationResponse{}, nil
+	}
+
+	// Convert locations to response format
+	responses := make([]models.LocationResponse, 0, len(locations))
+	for _, location := range locations {
+		jsonLocation, _ := json.MarshalIndent(location, "", "  ")
+		fmt.Println(string(jsonLocation))
+
+		response, err := ConvertLocationToResponse(location)
+		fmt.Println(response)
+		if err != nil {
+			// Log the error but continue with other locations
+			// This prevents a single conversion error from failing the entire request
+			fmt.Printf("failed to convert location %s: %v\n", location.ID.Hex(), err)
+			continue
+		}
+		responses = append(responses, *response)
+	}
+
+	return responses, nil
 }
 
 // SearchNearbyLocations searches for locations near the specified coordinates
@@ -214,7 +280,7 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 
 	// Initialize pipeline with geoNear stage
 	pipeline := []bson.D{geoNearStage}
-	
+
 	// Add filtering by keyword if provided
 	if search.Keyword != "" {
 		// Text search across multiple fields
@@ -230,7 +296,7 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 		}
 		pipeline = append(pipeline, matchStage)
 	}
-	
+
 	// Add category filter if provided
 	if search.Category != "" {
 		categoryStage := bson.D{
@@ -240,7 +306,7 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 		}
 		pipeline = append(pipeline, categoryStage)
 	}
-	
+
 	// Add limit stage at the end of the pipeline
 	limitStage := bson.D{{Key: "$limit", Value: limit}}
 	pipeline = append(pipeline, limitStage)
@@ -254,7 +320,7 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 
 	// Process results - this is where the fix is needed
 	var results []models.SearchResult
-	
+
 	// Use a map to hold each document with its distance field
 	for cursor.Next(ctx) {
 		// Use a raw document to decode
@@ -262,27 +328,42 @@ func SearchNearbyLocations(search models.SearchRequest) ([]models.SearchResult, 
 		if err := cursor.Decode(&rawDoc); err != nil {
 			return nil, fmt.Errorf("failed to decode search result: %v", err)
 		}
-		
+
 		// Extract the distance
 		distance, _ := rawDoc["distance"].(float64)
-		
+		fmt.Print(rawDoc)
 		// Delete the distance field from the document
 		delete(rawDoc, "distance")
-		
+
+		// Extract coordinates from location
+		if location, ok := rawDoc["location"].(bson.M); ok {
+			if coords, ok := location["coordinates"].(primitive.A); ok && len(coords) == 2 {
+				longitude := coords[0].(float64)
+				latitude := coords[1].(float64)
+				// Add coordinates to rawDoc for later use
+				rawDoc["longitude"] = longitude
+				rawDoc["latitude"] = latitude
+			}
+		}
+
 		// Marshal and unmarshal to convert to a Location object
 		bsonData, err := bson.Marshal(rawDoc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal document: %v", err)
 		}
-		
+
 		var location models.Location
 		if err := bson.Unmarshal(bsonData, &location); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal to location: %v", err)
 		}
-		
+
+		convertLocation, _ := ConvertLocationToResponse(location)
+		if convertLocation == nil {
+			return nil, fmt.Errorf("failed to convert location to response")
+		}
 		// Add to results
 		results = append(results, models.SearchResult{
-			Location: location,
+			Location: *convertLocation,
 			Distance: distance,
 		})
 	}
@@ -329,34 +410,34 @@ func ReverseGeocode(lat string, lng string) (interface{}, error) {
 	params := url.Values{}
 	params.Add("key", cfg.MiniMapKey)
 	params.Add("location", fmt.Sprintf("%s,%s", lat, lng))
-	params.Add("get_poi", "1")  // Get nearby POIs
-	
+	params.Add("get_poi", "1") // Get nearby POIs
+
 	// Build the full URL with parameters
 	apiURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
-	
+
 	// Make HTTP request to Tencent Maps API
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call Tencent Maps API: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Check if the request was successful
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tencent maps API returned non-200 status code: %d", resp.StatusCode)
 	}
-	
+
 	// Parse the response
 	var geocodeResponse models.ReverseGeocodeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&geocodeResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse Tencent Maps API response: %v", err)
 	}
-	
+
 	// Check if the API returned an error
 	if geocodeResponse.Status != 0 {
 		return nil, fmt.Errorf("tencent maps API error: %d - %s", geocodeResponse.Status, geocodeResponse.Message)
 	}
-	
+
 	// Return the result
 	return geocodeResponse.Result, nil
 }

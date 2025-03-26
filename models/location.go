@@ -12,49 +12,51 @@ type GeoLocation struct {
 	Coordinates []float64 `json:"coordinates" bson:"coordinates"`
 }
 
+// BaseLocation contains common fields shared across location-related structs
+type BaseLocation struct {
+	Name             string           `json:"name" bson:"name" validate:"required,min=2,max=100"`
+	Address          string           `json:"address" bson:"address" validate:"required,min=5,max=200"`
+	Description      string           `json:"description" bson:"description" validate:"max=500"`
+	Category         string           `json:"category" bson:"category" validate:"required,oneof=park cafe restaurant shop other"`
+	PhotoURLs        []string         `json:"photoUrls,omitempty" bson:"photoUrls,omitempty" validate:"max=10"`
+	IsPetFriendly    bool             `json:"isPetFriendly" bson:"isPetFriendly"`
+	PetSize          string           `json:"petSize" bson:"petSize" validate:"omitempty,oneof=small medium large"`
+	PetType          string           `json:"petType" bson:"petType" validate:"omitempty,oneof=dog cat other"`
+	Zone             string           `json:"zone" bson:"zone" validate:"required"`
+	AddressComponent AddressComponent `json:"addressComponent" bson:"addressComponent" validate:"required"`
+	AdInfo           AdInfo           `json:"adInfo" bson:"adInfo" validate:"required"`
+}
+
 // Location represents a stored location in the system
 type Location struct {
-	ID               primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Name             string             `json:"name" bson:"name"`
-	Address          string             `json:"address" bson:"address"`
-	Description      string             `json:"description" bson:"description"`
-	Category         string             `json:"category" bson:"category"`
-	// Tags             []string           `json:"tags" bson:"tags"`
-	Location         GeoLocation        `json:"location" bson:"location"` // GeoJSON format for MongoDB
-	// Phone            string             `json:"phone,omitempty" bson:"phone,omitempty"`
-	// Website          string             `json:"website,omitempty" bson:"website,omitempty"`
-	PhotoURLs        []string           `json:"photoUrls,omitempty" bson:"photoUrls,omitempty"`
-	IsPetFriendly    bool               `json:"isPetFriendly" bson:"isPetFriendly"`
-	PetSize          string             `json:"petSize" bson:"petSize"`
-	PetType          string             `json:"petType" bson:"petType"`
-	Zone             string             `json:"zone" bson:"zone"`
-	AddressComponent AddressComponent   `json:"addressComponent" bson:"addressComponent"`
-	AdInfo           AdInfo             `json:"adInfo" bson:"adInfo"`
-	CreatedAt        time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt        time.Time          `json:"updatedAt" bson:"updatedAt"`
+	ID           primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	BaseLocation `bson:",inline"`
+	Location     GeoLocation `json:"location" bson:"location" validate:"required"`
+	CreatedAt    time.Time   `json:"createdAt" bson:"createdAt"`
+	UpdatedAt    time.Time   `json:"updatedAt" bson:"updatedAt"`
+}
+
+// LocationResponse represents the API response for a location
+type LocationResponse struct {
+	ID           primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	BaseLocation `bson:",inline"`
+	Latitude     float64 `json:"latitude" bson:"latitude"`
+	Longitude    float64 `json:"longitude" bson:"longitude"`
 }
 
 // LocationRequest represents the incoming request to create or update a location
 type LocationRequest struct {
-	Name             string          `json:"name" bson:"name"`
-	Address          string          `json:"address" bson:"address"`
-	Description      string          `json:"description" bson:"description"`
-	Latitude         float64         `json:"latitude" bson:"latitude"`
-	Longitude        float64         `json:"longitude" bson:"longitude"`
-	IsPetFriendly    bool            `json:"isPetFriendly" bson:"isPetFriendly"`
-	PetSize          string          `json:"petSize" bson:"petSize"`
-	PetType          string          `json:"petType" bson:"petType"`
-	Zone             string          `json:"zone" bson:"zone"`
-	AddressComponent AddressComponent `json:"addressComponent" bson:"addressComponent"`
-	AdInfo           AdInfo           `json:"adInfo" bson:"adInfo"`
+	BaseLocation `bson:",inline"`
+	Latitude     float64 `json:"latitude" bson:"latitude"`
+	Longitude    float64 `json:"longitude" bson:"longitude"`
 }
 
 type AdInfo struct {
-	AdCode           string `json:"adcode" bson:"adcode"`
-	CityCode         string `json:"city_code" bson:"city_code"`
-	DistrictCode     string `json:"district_code" bson:"district_code"`
-	NationCode       string `json:"nation_code" bson:"nation_code"`
-	NationalityCode  string `json:"nationality_code" bson:"nationality_code"`
+	AdCode          string `json:"adcode" bson:"adcode"`
+	CityCode        string `json:"city_code" bson:"city_code"`
+	DistrictCode    string `json:"district_code" bson:"district_code"`
+	NationCode      string `json:"nation_code" bson:"nation_code"`
+	NationalityCode string `json:"nationality_code" bson:"nationality_code"`
 }
 
 type AddressComponent struct {
@@ -78,14 +80,14 @@ type SearchRequest struct {
 
 // SearchResult wraps a Location with additional distance information
 type SearchResult struct {
-	Location Location `json:"location"`
-	Distance float64  `json:"distance"` // Distance to the search point in meters
+	Location LocationResponse `json:"location"`
+	Distance float64          `json:"distance"` // Distance to the search point in meters
 }
 
 // ReverseGeocodeResponse represents the response from Tencent Maps API
 type ReverseGeocodeResponse struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
+	Status  int                  `json:"status"`
+	Message string               `json:"message"`
 	Result  ReverseGeocodeResult `json:"result"`
 }
 
@@ -95,9 +97,9 @@ type ReverseGeocodeResult struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
 	} `json:"location"`
-	Address         string          `json:"address"`
-	AddressComponent AddressComponent `json:"address_component"`
-	AdInfo          AdInfo          `json:"ad_info"`
+	Address            string           `json:"address"`
+	AddressComponent   AddressComponent `json:"address_component"`
+	AdInfo             AdInfo           `json:"ad_info"`
 	FormattedAddresses struct {
 		Recommend string `json:"recommend"`
 		Rough     string `json:"rough"`
