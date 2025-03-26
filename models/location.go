@@ -18,7 +18,7 @@ type BaseLocation struct {
 	Address          string           `json:"address" bson:"address" validate:"required,min=5,max=200"`
 	Description      string           `json:"description" bson:"description" validate:"max=500"`
 	Category         string           `json:"category" bson:"category" validate:"required,oneof=park cafe restaurant shop other"`
-	PhotoURLs        []string         `json:"photoUrls,omitempty" bson:"photoUrls,omitempty" validate:"max=10"`
+	Photos           []string         `json:"photos,omitempty" bson:"photos,omitempty" validate:"max=10"`
 	IsPetFriendly    bool             `json:"isPetFriendly" bson:"isPetFriendly"`
 	PetSize          string           `json:"petSize" bson:"petSize" validate:"omitempty,oneof=small medium large"`
 	PetType          string           `json:"petType" bson:"petType" validate:"omitempty,oneof=dog cat other"`
