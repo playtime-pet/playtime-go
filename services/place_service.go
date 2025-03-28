@@ -57,7 +57,7 @@ func UpdateReview(id primitive.ObjectID, request models.Review) (*models.Review,
 	updateData := bson.M{
 		"$set": bson.M{
 			"content":    request.Content,
-			"ratingStar": request.RatingStar,
+			"ratingStar": request.Rating,
 			"date":       time.Now(),
 		},
 	}

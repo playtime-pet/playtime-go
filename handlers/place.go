@@ -75,7 +75,7 @@ func createReview(w http.ResponseWriter, r *http.Request) {
 		utils.ErrorResponse(w, "Content is required", 400, http.StatusBadRequest)
 		return
 	}
-	if request.RatingStar < 1 || request.RatingStar > 5 {
+	if request.Rating < 1 || request.Rating > 5 {
 		utils.ErrorResponse(w, "Rating must be between 1 and 5", 400, http.StatusBadRequest)
 		return
 	}
@@ -136,7 +136,7 @@ func updateReview(w http.ResponseWriter, r *http.Request, reviewID string) {
 		utils.ErrorResponse(w, "Content is required", 400, http.StatusBadRequest)
 		return
 	}
-	if request.RatingStar < 1 || request.RatingStar > 5 {
+	if request.Rating < 1 || request.Rating > 5 {
 		utils.ErrorResponse(w, "Rating must be between 1 and 5", 400, http.StatusBadRequest)
 		return
 	}
