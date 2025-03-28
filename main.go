@@ -28,6 +28,8 @@ func main() {
 	router.HandleFunc("/map", handlers.HandleMap)
 	router.HandleFunc("/map/", handlers.HandleMap)
 	router.HandleFunc("/map/search", handlers.HandleMap)
+	router.HandleFunc("/place/review", handlers.HandlePlaceReviews) // This will catch all review
+	router.HandleFunc("/place/review/", handlers.HandlePlaceReviews)
 
 	// Initialize MongoDB (connection is created on first use)
 	db.GetMongoClient()
