@@ -14,7 +14,7 @@ type Pet struct {
 	Size      string             `json:"size" bson:"size"`
 	Breed     string             `json:"breed" bson:"breed"`
 	Avatar    string             `json:"avatar" bson:"avatar"`
-	Desc      string             `json:"desc" bson:"desc"`
+	Character string             `json:"character" bson:"character"`
 	Age       int                `json:"age" bson:"age"`
 	OwnerID   primitive.ObjectID `json:"ownerId,omitempty" bson:"ownerId,omitempty"`
 	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
@@ -23,12 +23,12 @@ type Pet struct {
 
 // PetRequest represents the incoming request to create or update a pet
 type PetRequest struct {
-	Name    string             `json:"name"`
-	Gender  string             `json:"gender"`
-	Size    string             `json:"size"`
-	Breed   string             `json:"breed"`
-	Avatar  string             `json:"avatar"`
-	Desc    string             `json:"desc"`
-	Age     int                `json:"age"`
-	OwnerID primitive.ObjectID `json:"ownerId,omitempty"`
+	Name      string             `json:"name"`
+	Gender    string             `json:"gender"`
+	Size      string             `json:"size"`
+	Breed     string             `json:"breed"`
+	Avatar    string             `json:"avatar"`
+	Character string             `json:"character"`
+	Age       int                `json:"age"`
+	OwnerID   primitive.ObjectID `json:"ownerId,omitempty"`
 }
