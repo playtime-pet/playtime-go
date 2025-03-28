@@ -20,9 +20,9 @@ type BaseLocation struct {
 	Category         string           `json:"category" bson:"category" validate:"required,oneof=park cafe restaurant shop other"`
 	Photos           []string         `json:"photos,omitempty" bson:"photos,omitempty" validate:"max=10"`
 	IsPetFriendly    bool             `json:"isPetFriendly" bson:"isPetFriendly"`
-	PetSize          string           `json:"petSize" bson:"petSize" validate:"omitempty,oneof=small medium large"`
-	PetType          string           `json:"petType" bson:"petType" validate:"omitempty,oneof=dog cat other"`
-	Zone             string           `json:"zone" bson:"zone" validate:"required"`
+	PetSize          []string         `json:"petSize" bson:"petSize" validate:"dive,omitempty,oneof=small medium large"`
+	PetType          []string         `json:"petType" bson:"petType" validate:"dive,omitempty,oneof=dog cat other"`
+	Zone             []string         `json:"zone" bson:"zone" validate:"required,dive,required"`
 	AddressComponent AddressComponent `json:"addressComponent" bson:"addressComponent" validate:"required"`
 	AdInfo           AdInfo           `json:"adInfo" bson:"adInfo" validate:"required"`
 }

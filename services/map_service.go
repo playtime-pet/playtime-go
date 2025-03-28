@@ -34,7 +34,6 @@ func CreateLocation(request models.LocationRequest) (*models.LocationResponse, e
 	// tags := generateTags(request)
 
 	// Determine category based on zone if not explicitly provided
-	category := request.Zone
 	geoLocation := utils.ToGeoJSONPoint(request.Latitude, request.Longitude)
 
 	// Debug log the GeoJSON data
@@ -45,7 +44,7 @@ func CreateLocation(request models.LocationRequest) (*models.LocationResponse, e
 			Name:             request.Name,
 			Address:          request.Address,
 			Description:      request.Description,
-			Category:         category,
+			Category:         request.Category,
 			IsPetFriendly:    request.IsPetFriendly,
 			PetSize:          request.PetSize,
 			PetType:          request.PetType,
@@ -73,19 +72,19 @@ func CreateLocation(request models.LocationRequest) (*models.LocationResponse, e
 }
 
 // Helper function to generate tags from pet-friendly information
-func generateTags(request models.LocationRequest) []string {
-	tags := []string{}
-	if request.IsPetFriendly {
-		tags = append(tags, "pet-friendly")
-		if request.PetSize != "" {
-			tags = append(tags, "pet-size-"+request.PetSize)
-		}
-		if request.PetType != "" {
-			tags = append(tags, "pet-type-"+request.PetType)
-		}
-	}
-	return tags
-}
+// func generateTags(request models.LocationRequest) []string {
+// 	tags := []string{}
+// 	if request.IsPetFriendly {
+// 		tags = append(tags, "pet-friendly")
+// 		if request.PetSize != "" {
+// 			tags = append(tags, "pet-size-"+request.PetSize)
+// 		}
+// 		if request.PetType != "" {
+// 			tags = append(tags, "pet-type-"+request.PetType)
+// 		}
+// 	}
+// 	return tags
+// }
 
 // GetLocationByID retrieves a location by ID
 func GetLocationByID(id primitive.ObjectID) (*models.LocationResponse, error) {
