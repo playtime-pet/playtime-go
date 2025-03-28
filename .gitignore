@@ -67,3 +67,4 @@ profile.out
 # Built application
 main
 playtime-go
+.aider*
