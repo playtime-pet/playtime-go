@@ -98,6 +98,20 @@ func DeleteOne(collectionName string, filter interface{}) error {
 	return nil
 }
 
+// DeleteMany deletes multiple documents matching the filter in the specified collection
+func DeleteMany(collectionName string, filter interface{}) (int64, error) {
+	collection := db.GetCollection(collectionName)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	result, err := collection.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete documents: %v", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
 // Count counts the number of documents matching the filter in the specified collection
 func Count(collectionName string, filter interface{}) (int64, error) {
 	collection := db.GetCollection(collectionName)

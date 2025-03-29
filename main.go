@@ -9,6 +9,7 @@ import (
 	"playtime-go/db"
 	"playtime-go/handlers"
 	"playtime-go/services"
+	"playtime-go/utils"
 	"syscall"
 )
 
@@ -16,20 +17,27 @@ func main() {
 	// Initialize router
 	router := http.NewServeMux()
 
-	// Register routes
-	router.HandleFunc("/token", handlers.HandleToken)
-	router.HandleFunc("/phone", handlers.HandlePhone)
-	router.HandleFunc("/user", handlers.HandleUser)
-	router.HandleFunc("/user/", handlers.HandleUser) // This will catch all /user/* paths
-	router.HandleFunc("/user/openid/", handlers.HandleUserByOpenID)
-	router.HandleFunc("/wechat/", handlers.HandleWechat)
-	router.HandleFunc("/pet", handlers.HandlePet)
-	router.HandleFunc("/pet/", handlers.HandlePet) // This will catch all /pet/* paths
-	router.HandleFunc("/map", handlers.HandleMap)
-	router.HandleFunc("/map/", handlers.HandleMap)
-	router.HandleFunc("/map/search", handlers.HandleMap)
-	router.HandleFunc("/place/review", handlers.HandlePlaceReviews) // This will catch all review
-	router.HandleFunc("/place/review/", handlers.HandlePlaceReviews)
+	// Register routes with logging middleware
+	router.HandleFunc("/token", utils.LoggingMiddleware(handlers.HandleToken))
+	router.HandleFunc("/phone", utils.LoggingMiddleware(handlers.HandlePhone))
+	router.HandleFunc("/wechat/", utils.LoggingMiddleware(handlers.HandleWechat))
+
+	// User routes - explicitly handle both /user and /user/ patterns
+	router.HandleFunc("/user/openid/", utils.LoggingMiddleware(handlers.HandleUserByOpenID))
+	router.HandleFunc("/user", utils.LoggingMiddleware(handlers.HandleUser))  // Exact match for /user
+	router.HandleFunc("/user/", utils.LoggingMiddleware(handlers.HandleUser)) // Prefix match for /user/123
+
+	// pet related
+	router.HandleFunc("/pet", utils.LoggingMiddleware(handlers.HandlePet))
+	router.HandleFunc("/pet/", utils.LoggingMiddleware(handlers.HandlePet)) // This will catch all /pet/* paths
+
+	router.HandleFunc("/place", utils.LoggingMiddleware(handlers.HandlePlace)) // This will catch all /place/* paths
+	router.HandleFunc("/place/", utils.LoggingMiddleware(handlers.HandlePlace))
+
+	// review related
+	router.HandleFunc("/review/user/", utils.LoggingMiddleware(handlers.HandleReview))  // handle user reviews
+	router.HandleFunc("/review/place/", utils.LoggingMiddleware(handlers.HandleReview)) // handler place reviews
+	router.HandleFunc("/review/", utils.LoggingMiddleware(handlers.HandleReview))
 
 	// Initialize MongoDB (connection is created on first use)
 	db.GetMongoClient()

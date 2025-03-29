@@ -16,13 +16,17 @@ import (
 
 // HandleUser handles user creation, retrieval, update, and deletion
 func HandleUser(w http.ResponseWriter, r *http.Request) {
-	// Extract user ID from URL if present (for specific user operations)
-	urlParts := strings.Split(r.URL.Path, "/")
-	var userID string
+	urlParts := utils.ExtractUrlParam(r.URL.Path, "/user")
 
+	// // Extract user ID from URL if present (for specific user operations)
+	// urlPath := strings.TrimPrefix(r.URL.Path, "/user")
+	// urlPath = strings.TrimPrefix(urlPath, "/")
+	// urlParts := strings.Split(urlPath, "/")
+
+	var userID string
 	// Check if we have a user ID in the URL
-	if len(urlParts) > 2 && urlParts[1] == "user" && urlParts[2] != "" {
-		userID = urlParts[2]
+	if len(urlParts) > 0 && urlParts[0] != "" {
+		userID = urlParts[0]
 	}
 
 	// Handle request based on method and whether we have a specific user ID
